@@ -1,12 +1,21 @@
-#!/usr/bin/env python
 '''
 TO DO:
+BUG: No output if someone enters single commdline ID
+Error Handling:
+    non-existent user id
+    wrong input
+    output path bad
+    no permission for output file
+
+Rename
 Upload properly to GitHub
 Update Meren
+
 '''
 ###Imports
 import argparse
 import csv
+import os
 import pathlib
 from random import *
 import re
@@ -14,6 +23,10 @@ from scholarly import scholarly #https://scholarly.readthedocs.io/en/latest/quic
                                 #search-for-an-author-by-the-id-visible-in-the-url-of-an-authors-profile
                                 #make adjustments with instructions found below:
                                     #https://github.com/scholarly-python-package/scholarly/issues/297
+                                    #Adjustments made in July 16 and 20  versions
+                                #July 16 and 20 version trigger error messages with fake_useragent
+                                    #Make adjustments with instructions found below
+                                        #https://github.com/hellysmile/fake-useragent/pull/110/commits/d8ca49d341829adb1f0efa7a309337bdc1c2b978
 import sys
 import time
 from time import sleep
@@ -44,51 +57,73 @@ def main(args):
             with open(user_ids[0], 'r') as in_f:
                 preIdList = [id.strip() for id in in_f]
             author_ids = [id.replace(',', '') for id in preIdList]
+        else:
+            print('Processing ID(s)')
+            author_ids = [id.replace(',', '') for id in user_ids]
+            print(author_ids)
     else:
         print('Processing ID(s)')
         author_ids = [id.replace(',', '') for id in user_ids]
         print(author_ids)
 
-    #Retrieve the author's data, fill-in, and print
+
+    #Retrieve the author's data, fill-in, and return list of dictionaryies containing author and pub info
     dicList = []
     for a_id in author_ids:
         print('Processing:')
         print(a_id)
-        id = scholarly.search_author_id(a_id)
 
-        name = id['name']
-        print(name)
+        #Process valid IDs while flagging invalid IDs
+        try:
+            id = scholarly.search_author_id(a_id)
+            name = id['name']
+            print(name)
 
-        author = scholarly.fill(id) #!!!This is how you fill author by ID!!!
-        numPub = len(author['publications'])
+            author = scholarly.fill(id) #Fill author by ID
+            numPub = len(author['publications'])
+            print(name + ' has ' + str(numPub) + ' publications')
 
-        #Generate random intervals for time between accessing publications
-        #as means to avoid upsetting Goliath
+            random_intervals = genRandList(numPub) # See genRandList
 
-        randList = []
-        n = 0
-        while n < numPub:
-            n = n + 1
-            ran = randint(30, 150)
-            randList.append(ran)
+            dicList = gather_pub_info(author, random_intervals, dicList)
 
-        ###Gather publication info
-        i = 0
-        for publication in author['publications']:
-            if i < 2: #use for testing purposes
-            #if i < len(author['publications']):
-                nPub = scholarly.fill(author['publications'][i])
-                print(nPub)
-                dicList.append(nPub)
-                i = i + 1
-                print("Printed pub " + str(i))
+        except AttributeError:
+            print('An AttributeError occurred for ' + a_id)
+            print('Please check to make sure this ID is correct.')
 
-                t = randList[i]
-                print("Sleep for " + str(t) + " seconds")
-                time.sleep(t)
-    print(author_ids)
+    #Produce final .tsv file
+    #produce_final_tsv(output_file, dicList)
 
-    #Write to a .tsv file
+#Generate random intervals for time between accessing publications
+#as means to avoid upsetting Goliath
+def genRandList(number_of_publications):
+    randList = []
+    n = 0
+    while n < number_of_publications:
+        n = n + 1
+        ran = randint(30, 150)
+        randList.append(ran)
+    return randList
+
+#Gather publication info
+def gather_pub_info(author, random_intervals, dicList):
+    i = 0
+    for publication in author['publications']:
+        if i < 1: #use for testing purposes
+        #if i < len(author['publications']):
+            nPub = scholarly.fill(author['publications'][i])
+            print(nPub)
+            dicList.append(nPub)
+            i = i + 1
+            print("Printed pub " + str(i))
+
+            t = random_intervals[i]
+            print("Sleep for " + str(t) + " seconds")
+            time.sleep(t)
+    return dicList
+
+#Write publication info to a .tsv file
+def produce_final_tsv(output_file, dicList):
     with open(output_file, 'wt') as o_file:
         tsv_writer = csv.writer(o_file, delimiter='\t')
         tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages'])
@@ -130,10 +165,15 @@ def main(args):
             else:
                 page = 'NA'
             tsv_writer.writerow([title, auth, year, jour, volu, numb, page])
+#def check_paths(arg_dict):
+#    input = arg_dict['user_ids']
+#    output= arg['output_file']
+
 
 if __name__ == "__main__":
     ###Use Argparse to Take In Commandline Arguments
-    parser = argparse.ArgumentParser(description = __description__)
+    parser = argparse.ArgumentParser(description = __description__, allow_abbrev= False) #provide description
+                                                                                         #disable abbreviated args
 
     #group = parser.add_mutually_exclusive_group()
     #group.add_argument("--user-ids", nargs = "+", help = "One or more IDs entered via the commandline")
