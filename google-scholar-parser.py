@@ -1,23 +1,22 @@
 '''
 TO DO:
 BUG: No output if someone enters single commdline ID (FIXED)
-BUG: Need to differentiate between single commandline ID and FILE (possibly require .txt format or have different commands)
+BUG: Need to differentiate between single commandline ID and FILE (possibly FIXED, althoug may be better to require .txt format or have different commands)
 Error Handling:
     non-existent user id (HANDLED try...except)
-    wrong input (HANDLED by ArgParse)
-    input path bad
+    wrong input (HANDLED by ArgParse)... although maybe use new command error?
+    input path bad (HANDLED?)
     no input file
-    no permission for inputfile
+    proper format for input file
+    no permission for input file (HANDLED try...except)
+    input file does not exist
     output path bad (HANDLED try...except with custom error)
     no output file (HANDLED try...except with custom error)
     output file exists (HANDLED try...exceot with custom error)
-    no permission for output file
+    no permission for output file (HANDLED try...except)
 
-
-Rename
 Upload properly to GitHub
 Update Meren
-
 '''
 ###Imports
 import argparse
@@ -47,31 +46,13 @@ __requires__ = ["--user-ids", "--output-file"]
 __provides__ = ["author-publication-information.tsv"]
 __description__ =("A set of Python utilities to parse Google Scholar data")
 
-def main(args):
+def main(author_ids, output_file):
 
-    print(args)
+    #print(args)
 
     ###Extract args from dictionary
-    user_ids = args['user_ids']
-    output_file = args['output_file']
-
-    ###Process User IDs
-    author_ids = []
-    if len(user_ids) < 2:
-        possible_file = pathlib.Path(user_ids[0])
-        if possible_file.exists():
-            print('Processing ' + str(possible_file))
-            with open(user_ids[0], 'r') as in_f:
-                preIdList = [id.strip() for id in in_f]
-            author_ids = [id.replace(',', '') for id in preIdList]
-        else:
-            print('Processing ID(s)')
-            author_ids = [id.replace(',', '') for id in user_ids]
-            print(author_ids)
-    else:
-        print('Processing ID(s)')
-        author_ids = [id.replace(',', '') for id in user_ids]
-        print(author_ids)
+    #user_ids = args['user_ids']
+    #output_file = args['output_file']
 
     '''
     #Retrieve the author's data, fill-in, and return list of dictionaryies containing author and pub info
@@ -98,37 +79,95 @@ def main(args):
             print('An AttributeError occurred for ' + a_id)
             print('Please check to make sure this ID is correct.')
     '''
-    #Check output file and path
+    #Produce final .tsv file
+    #produce_final_tsv(output_file, dicList)
+
+class FilesNPathsError(Exception):
+    pass
+
+#Check input paths and process author IDs
+def processInput(arg_dict):
+    user_ids = arg_dict['user_ids']
+    ###Check input file and path
+    ####Is input a file?
+    if len(user_ids) < 2:
+        head, tail = os.path.split(user_ids[0])
+        ####Does input path exist?
+        if len(head) > 0:
+            if not os.path.exists(user_ids[0]):
+                try:
+                    raise FilesNPathsError()
+                except FilesNPathsError as e:
+                    print('FilesNPathsError: Your input path is invalid. Please try again.')
+                    sys.exit(1)
+
+
+        ####Does file exist
+        if os.path.isfile(user_ids[0]):
+
+            ####Does user have permission to read?
+            if not os.access(user_ids[0], os.R_OK):
+                try:
+                    raise FilesNPathsError()
+                except FilesNPathsError as e:
+                    print('FilesNPathsError: You do not have permission to read this file :(')
+                    sys.exit(1)
+
+            ####Process file if it exists and user has permission
+            print('Processing ' + str(user_ids[0]))
+            with open(user_ids[0], 'r') as in_f:
+                preIdList = [id.strip() for id in in_f]
+            author_ids = [id.replace(',', '') for id in preIdList]
+
+        ####Process single ID if file does not exist
+        else:
+            print("Input does not appear to be a file. Therefore it will be processed as a single user ID.")
+            print('Processing ID:')
+            author_ids = [id.replace(',', '') for id in user_ids]
+            print(author_ids[0])
+
+    ###Process list of IDs
+    else:
+        print('You have entered a list of IDs.')
+        print('The following ID(s) will be processed:')
+        author_ids = [id.replace(',', '') for id in user_ids]
+        print(*author_ids, sep='\n')
+    return author_ids
+
+
+#Check output file and path
+def checkOutputFile(arg_dict):
+    output_file = arg_dict['output_file']
     head, tail = os.path.split(output_file)
     if len(head) > 0:
-        if not os.path.exists(output_file):
+
+        ####Does path exist?
+        if not os.path.exists(head):
             try:
                 raise FilesNPathsError()
             except FilesNPathsError as e:
                 print('FilesNPathsError: Your output path is invalid. Please try again.')
                 sys.exit(1)
-        if os.path.isfile(output_file):
+
+        ####Does user have permissions to write to directory?
+        if not os.access(output_file, os.W_OK):
             try:
                 raise FilesNPathsError()
-            except:
-                print("FilesNPathsError: Let's try not to overwrite existing files")
+            except FilesNPathsError as e:
+                print('FilesNPathsError: You do not have permission to write to this directory :(')
                 sys.exit(1)
 
-
-
-
-
-    print(len(head))
-    print(tail)
-    #print(os.path.basename(output_file))
-    #Produce final .tsv file
-    #produce_final_tsv(output_file, dicList)
+    ####Does File Already Exist?
+    if os.path.isfile(output_file):
+        try:
+            raise FilesNPathsError()
+        except:
+            print("FilesNPathsError: Let's try not to overwrite existing files")
+            sys.exit(1)
+    return output_file
 
 #Generate random intervals for time between accessing publications
 #as means to avoid upsetting Goliath
-class FilesNPathsError(Exception):
-    pass
-
 def genRandList(number_of_publications):
     randList = []
     n = 0
@@ -198,10 +237,6 @@ def produce_final_tsv(output_file, dicList):
             else:
                 page = 'NA'
             tsv_writer.writerow([title, auth, year, jour, volu, numb, page])
-#def check_paths(arg_dict):
-#    input = arg_dict['user_ids']
-#    output= arg['output_file']
-
 
 if __name__ == "__main__":
     ###Use Argparse to Take In Commandline Arguments
@@ -220,4 +255,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     arg_dict = args.__dict__
 
-    main(arg_dict)
+    user_ids = processInput(arg_dict)
+    output_file = checkOutputFile(arg_dict)
+
+    #main(author_ids, output_file)
