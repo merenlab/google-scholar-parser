@@ -1,11 +1,18 @@
 '''
 TO DO:
-BUG: No output if someone enters single commdline ID
+BUG: No output if someone enters single commdline ID (FIXED)
+BUG: Need to differentiate between single commandline ID and FILE (possibly require .txt format or have different commands)
 Error Handling:
-    non-existent user id
-    wrong input
-    output path bad
+    non-existent user id (HANDLED try...except)
+    wrong input (HANDLED by ArgParse)
+    input path bad
+    no input file
+    no permission for inputfile
+    output path bad (HANDLED try...except with custom error)
+    no output file (HANDLED try...except with custom error)
+    output file exists (HANDLED try...exceot with custom error)
     no permission for output file
+
 
 Rename
 Upload properly to GitHub
@@ -66,7 +73,7 @@ def main(args):
         author_ids = [id.replace(',', '') for id in user_ids]
         print(author_ids)
 
-
+    '''
     #Retrieve the author's data, fill-in, and return list of dictionaryies containing author and pub info
     dicList = []
     for a_id in author_ids:
@@ -90,12 +97,38 @@ def main(args):
         except AttributeError:
             print('An AttributeError occurred for ' + a_id)
             print('Please check to make sure this ID is correct.')
+    '''
+    #Check output file and path
+    head, tail = os.path.split(output_file)
+    if len(head) > 0:
+        if not os.path.exists(output_file):
+            try:
+                raise FilesNPathsError()
+            except FilesNPathsError as e:
+                print('FilesNPathsError: Your output path is invalid. Please try again.')
+                sys.exit(1)
+        if os.path.isfile(output_file):
+            try:
+                raise FilesNPathsError()
+            except:
+                print("FilesNPathsError: Let's try not to overwrite existing files")
+                sys.exit(1)
 
+
+
+
+
+    print(len(head))
+    print(tail)
+    #print(os.path.basename(output_file))
     #Produce final .tsv file
     #produce_final_tsv(output_file, dicList)
 
 #Generate random intervals for time between accessing publications
 #as means to avoid upsetting Goliath
+class FilesNPathsError(Exception):
+    pass
+
 def genRandList(number_of_publications):
     randList = []
     n = 0
