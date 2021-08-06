@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
 '''
 TO DO:
 BUG: No output if someone enters single commdline ID (FIXED)
@@ -54,7 +57,7 @@ def main(author_ids, output_file):
     #user_ids = args['user_ids']
     #output_file = args['output_file']
 
-
+    '''
     #Retrieve the author's data, fill-in, and return list of dictionaryies containing author and pub info
     dicList = []
     for a_id in author_ids:
@@ -78,9 +81,9 @@ def main(author_ids, output_file):
         except AttributeError:
             print('An AttributeError occurred for ' + a_id)
             print('Please check to make sure this ID is correct.')
-
+    '''
     #Produce final .tsv file
-    produce_final_tsv(output_file, dicList)
+    #produce_final_tsv(output_file, dicList)
 
 class FilesNPathsError(Exception):
     pass
@@ -258,4 +261,4 @@ if __name__ == "__main__":
     user_ids = processInput(arg_dict)
     output_file = checkOutputFile(arg_dict)
 
-    main(user_ids, output_file)
+    #main(author_ids, output_file)
