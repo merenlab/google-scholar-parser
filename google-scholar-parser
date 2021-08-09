@@ -78,7 +78,7 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
             print('Please check to make sure this ID is correct.')
 
     #Produce final .tsv file
-    #produce_final_tsv(output_file, dicList)
+    produce_final_tsv(output_file, dicList)
 
 class FilesNPathsError(Exception):
     pass
