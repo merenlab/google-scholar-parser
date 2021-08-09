@@ -1,3 +1,6 @@
+#!/usr/bin/enc/ python
+#-*-coding: utf-8
+
 '''
 TO DO:
 BUG: No output if someone enters single commdline ID (FIXED)
@@ -46,14 +49,7 @@ __requires__ = ["--user-ids", "--output-file"]
 __provides__ = ["author-publication-information.tsv"]
 __description__ =("A set of Python utilities to parse Google Scholar data")
 
-def main(author_ids, output_file):
-
-    #print(args)
-
-    ###Extract args from dictionary
-    #user_ids = args['user_ids']
-    #output_file = args['output_file']
-
+def main(author_ids, output_file, random_interval_precaution, article_limit_precaution):
 
     #Retrieve the author's data, fill-in, and return list of dictionaryies containing author and pub info
     dicList = []
@@ -73,14 +69,16 @@ def main(author_ids, output_file):
 
             random_intervals = genRandList(numPub) # See genRandList
 
-            dicList = gather_pub_info(author, random_intervals, dicList)
+            article_limit = determine_article_limit(article_limit_precaution, numPub)
+
+            dicList = gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit)
 
         except AttributeError:
             print('An AttributeError occurred for ' + a_id)
             print('Please check to make sure this ID is correct.')
 
     #Produce final .tsv file
-    produce_final_tsv(output_file, dicList)
+    #produce_final_tsv(output_file, dicList)
 
 class FilesNPathsError(Exception):
     pass
@@ -166,6 +164,18 @@ def checkOutputFile(arg_dict):
             sys.exit(1)
     return output_file
 
+def determine_article_limit(article_limit_precaution, number_of_publications):
+    limit = 0
+
+    if article_limit_precaution == None:
+        limit = number_of_publications
+    elif number_of_publications <= article_limit_precaution:
+        limit = number_of_publications
+    else:
+        limit = article_limit_precaution
+
+    return limit
+
 #Generate random intervals for time between accessing publications
 #as means to avoid upsetting Goliath
 def genRandList(number_of_publications):
@@ -178,20 +188,24 @@ def genRandList(number_of_publications):
     return randList
 
 #Gather publication info
-def gather_pub_info(author, random_intervals, dicList):
+def gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit):
+
     i = 0
     for publication in author['publications']:
-        if i < 1: #use for testing purposes
-        #if i < len(author['publications']):
+        if i < article_limit:
             nPub = scholarly.fill(author['publications'][i])
             print(nPub)
             dicList.append(nPub)
+
+            t = random_intervals[i]
+
             i = i + 1
             print("Printed pub " + str(i))
 
-            t = random_intervals[i]
-            print("Sleep for " + str(t) + " seconds")
-            time.sleep(t)
+            if random_interval_precaution == 'True':
+                print("Sleep for " + str(t) + " seconds")
+                time.sleep(t)
+
     return dicList
 
 #Write publication info to a .tsv file
@@ -243,19 +257,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = __description__, allow_abbrev= False) #provide description
                                                                                          #disable abbreviated args
 
-    #group = parser.add_mutually_exclusive_group()
-    #group.add_argument("--user-ids", nargs = "+", help = "One or more IDs entered via the commandline")
-    #group.add_argument("--in-file", help = "File of scholar author IDs entered via the commdline. File should contain one ID per row")
     requiredNamed = parser.add_argument_group('Required Arguments')
     requiredNamed.add_argument('--user-ids', nargs = "+", required=True,
                                 help = "One or more IDs entered via the commandline or in a file")
     requiredNamed.add_argument("--output-file", required = True,
                                 help = "Output file with publication info in .tsv format")
+    precautionsNamed = parser.add_argument_group('Precautions to Avoid Angering Google')
+    precautionsNamed.add_argument("--random-interval-precaution", choices = ['True', 'False'], default = 'True',
+                                    help = "Scrapes article data at random intervals of 30-150s to appear more human and decrease the liklihood of making Google angry.")
+    precautionsNamed.add_argument("--article-limit-precaution", choices = [None, 1, 5], type = int, default = None,
+                                    help = "Limit the number of articles scraped from Google to 1 or 5 for testing purposes")
 
     args = parser.parse_args()
+    print(args)
     arg_dict = args.__dict__
 
     user_ids = processInput(arg_dict)
     output_file = checkOutputFile(arg_dict)
-
-    main(user_ids, output_file)
+    random_interval_precaution = arg_dict['random_interval_precaution']
+    article_limit_precaution = arg_dict['article_limit_precaution']
+    main(user_ids, output_file, random_interval_precaution, article_limit_precaution)
