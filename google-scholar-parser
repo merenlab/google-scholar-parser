@@ -3,20 +3,12 @@
 
 '''
 TO DO:
-BUG: No output if someone enters single commdline ID (FIXED)
 BUG: Need to differentiate between single commandline ID and FILE (possibly FIXED, althoug may be better to require .txt format or have different commands)
 Error Handling:
-    non-existent user id (HANDLED try...except)
     wrong input (HANDLED by ArgParse)... although maybe use new command error?
     input path bad (HANDLED?)
     no input file
     proper format for input file
-    no permission for input file (HANDLED try...except)
-    input file does not exist
-    output path bad (HANDLED try...except with custom error)
-    no output file (HANDLED try...except with custom error)
-    output file exists (HANDLED try...exceot with custom error)
-    no permission for output file (HANDLED try...except)
 
 Upload properly to GitHub
 Update Meren
@@ -87,9 +79,13 @@ class FilesNPathsError(Exception):
 def processInput(arg_dict):
     user_ids = arg_dict['user_ids']
     ###Check input file and path
+
     ####Is input a file?
     if len(user_ids) < 2:
         head, tail = os.path.split(user_ids[0])
+        ext = pathlib.Path(tail).suffix
+        ext = ext.lower()
+
         ####Does input path exist?
         if len(head) > 0:
             if not os.path.exists(user_ids[0]):
@@ -99,9 +95,16 @@ def processInput(arg_dict):
                     print('FilesNPathsError: Your input path is invalid. Please try again.')
                     sys.exit(1)
 
-
-        ####Does file exist
+        ####Does file exist?
         if os.path.isfile(user_ids[0]):
+
+            ####Is the file a .txt file?
+            if not ext == '.txt':
+                try:
+                    raise FilesNPathsError()
+                except FilesNPathsError as e:
+                    print('Your file does not have the proper .txt extension')
+                    sys.exit(1)
 
             ####Does user have permission to read?
             if not os.access(user_ids[0], os.R_OK):
@@ -111,12 +114,21 @@ def processInput(arg_dict):
                     print('FilesNPathsError: You do not have permission to read this file :(')
                     sys.exit(1)
 
-            ####Process file if it exists and user has permission
+            ####Is file empty?
+            if os.stat(user_ids[0]).st_size==0:
+                try:
+                    raise FilesNPathsError()
+                except FilesNPathsError as e:
+                    print('FilesNPathsError: Your input file is empty :(')
+                    sys.exit(1)
+
+            ####Process file if above conditions are met
             print('Processing ' + str(user_ids[0]))
             with open(user_ids[0], 'r') as in_f:
                 preIdList = [id.strip() for id in in_f]
             author_ids = [id.replace(',', '') for id in preIdList]
-
+            author_ids = list(filter(None, [id if len(id.split()) == 1 else print('The following ID was removed ' + str(id)) for id in author_ids]))
+            print(author_ids)
         ####Process single ID if file does not exist
         else:
             print("Input does not appear to be a file. Therefore it will be processed as a single user ID.")
@@ -131,6 +143,10 @@ def processInput(arg_dict):
         author_ids = [id.replace(',', '') for id in user_ids]
         print(*author_ids, sep='\n')
     return author_ids
+
+def checkAuthorIDs(author_ids):
+
+    return checked_author_ids
 
 
 #Check output file and path
@@ -259,7 +275,7 @@ if __name__ == "__main__":
 
     requiredNamed = parser.add_argument_group('Required Arguments')
     requiredNamed.add_argument('--user-ids', nargs = "+", required=True,
-                                help = "One or more IDs entered via the commandline or in a file")
+                                help = "One or more IDs entered via the commandline or in a single .txt file with the appropriate '.txt' extension")
     requiredNamed.add_argument("--output-file", required = True,
                                 help = "Output file with publication info in .tsv format")
     precautionsNamed = parser.add_argument_group('Precautions to Avoid Angering Google')
