@@ -3,12 +3,10 @@
 
 '''
 TO DO:
-BUG: Need to differentiate between single commandline ID and FILE (possibly FIXED, althoug may be better to require .txt format or have different commands)
 Error Handling:
     wrong input (HANDLED by ArgParse)... although maybe use new command error?
     input path bad (HANDLED?)
     no input file
-    proper format for input file
 
 Upload properly to GitHub
 Update Meren
@@ -237,36 +235,63 @@ def produce_final_tsv(output_file, dicList):
             volu = ''
             numb = ''
             page = ''
+
             if 'title' in v['bib']:
                 title = v['bib']['title']
                 print(title)
             else:
                 title = 'NA'
+
             if 'author' in v['bib']:
-                auth = v['bib']['author']
+                auth = format_authors(v['bib']['author'])
             else:
                 auth = 'NA'
+
             if 'pub_year' in v['bib']:
                 year = v['bib']['pub_year']
             else:
                 year = 'NA'
+
             if 'journal' in v['bib']:
                 jour = v['bib']['journal']
             else:
                 jour = 'NA'
+
             if 'volume' in v['bib']:
                 volu = v['bib']['volume']
             else:
                 volu = 'NA'
+
             if 'number' in v['bib']:
                 numb = v['bib']['number']
             else:
                 numb = 'NA'
+
             if 'pages' in v['bib']:
                 page = v['bib']['pages']
             else:
                 page = 'NA'
+
             tsv_writer.writerow([title, auth, year, jour, volu, numb, page])
+
+def format_authors(authors_in_scholarly_format):
+    author_list = authors_in_scholarly_format.split(' and ')
+    name_breakdown = []
+    new_author_string = ''
+    last_name = ''
+    first_and_mi = []
+    initials = []
+
+    for name in author_list:
+        name_breakdown = name.split(' ')
+        last_name = name_breakdown[-1]
+        first_and_mi = name_breakdown[:-1]
+        #initials = [char[0] + '.' for char in first_and_mi]
+        #new_author_string = new_author_string + last_name + ', ' + ' '.join(initials) + "; "
+        new_author_string = new_author_string + last_name + ', ' + ' '.join(first_and_mi) + "; "
+
+
+    return new_author_string
 
 if __name__ == "__main__":
     ###Use Argparse to Take In Commandline Arguments
