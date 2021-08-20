@@ -122,11 +122,19 @@ def processInput(arg_dict):
 
             ####Process file if above conditions are met
             print('Processing ' + str(user_ids[0]))
-            with open(user_ids[0], 'r') as in_f:
-                preIdList = [id.strip() for id in in_f]
+
+            try:
+                with open(user_ids[0], 'r') as in_f:
+                    preIdList = [id.strip() for id in in_f]
+            except:
+                print('Your file could not be processed :( Please make sure it is in fact a properly formatted text file.')
+                sys.exit(1)
+
             author_ids = [id.replace(',', '') for id in preIdList]
             author_ids = list(filter(None, [id if len(id.split()) == 1 else print('The following ID was removed ' + str(id)) for id in author_ids]))
             print(author_ids)
+
+
         ####Process single ID if file does not exist
         else:
             print("Input does not appear to be a file. Therefore it will be processed as a single user ID.")
