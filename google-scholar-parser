@@ -1,16 +1,6 @@
 #!/usr/bin/enc/ python
 #-*-coding: utf-8
 
-'''
-TO DO:
-Error Handling:
-    wrong input (HANDLED by ArgParse)... although maybe use new command error?
-    input path bad (HANDLED?)
-    no input file
-
-Upload properly to GitHub
-Update Meren
-'''
 ###Imports
 import argparse
 from contextlib import redirect_stderr
@@ -28,6 +18,7 @@ from scholarly import scholarly #https://scholarly.readthedocs.io/en/latest/quic
                                 #July 16 and 20 version trigger error messages with fake_useragent
                                     #Make adjustments with instructions found below
                                         #https://github.com/hellysmile/fake-useragent/pull/110/commits/d8ca49d341829adb1f0efa7a309337bdc1c2b978
+from scholarly import ProxyGenerator #Necessary for using ScraperAPI
 import sys
 import time
 from time import sleep
@@ -43,13 +34,30 @@ __description__ =("A set of Python utilities to parse Google Scholar data")
 
 def main(author_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity):
 
+    '''
+    Implement Scholarly's ProxyGenerator to use ScraperAPI
+    Unclear where to place it.
+    Location immediately below only yields one call for one author and five pubs or two authors and one pub each.
+    '''
+    pg = ProxyGenerator()
+    #pg.ScraperAPI('9a7b0111cac9972e465e0040b5f37bdf')
+    #scholarly.use_proxy(pg)
+
     #Retrieve the author's data, fill-in, and return list of dictionaryies containing author and pub info
     dicList = []
     for a_id in author_ids:
         if verbosity == 1 or verbosity == 2: print('Processing: ', a_id)
 
+        '''
+        Here it appears to be called for each author.
+        '''
+        pg.ScraperAPI('9a7b0111cac9972e465e0040b5f37bdf')
+        scholarly.use_proxy(pg)
+
         #Process valid IDs while flagging invalid IDs
         try:
+
+
             id = scholarly.search_author_id(a_id)
             name = id['name']
             if verbosity == 1 or verbosity == 2: print(name)
@@ -62,11 +70,14 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
 
             article_limit = determine_article_limit(article_limit_precaution, numPub)
 
-            dicList = gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity)
+            dicList = gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity, pg)
 
         except AttributeError:
             print('An AttributeError occurred for ' + a_id)
             print('Please check to make sure this ID is correct.')
+
+        except:
+            print('Could not gather info for: ', a_id)
 
     #Produce final .tsv file
     produce_final_tsv(output_file, dicList)
@@ -227,14 +238,21 @@ def genRandList(number_of_publications):
     return randList
 
 #Gather publication info
-def gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity):
+def gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity, pg):
 
     i = 0
     for publication in author['publications']:
         if i < article_limit:
-            nPub = scholarly.fill(author['publications'][i])
-            if verbosity == 2: print(nPub)
-            dicList.append(nPub)
+
+            try:
+                pg.ScraperAPI('9a7b0111cac9972e465e0040b5f37bdf')
+                scholarly.use_proxy(pg)
+
+                nPub = scholarly.fill(author['publications'][i])
+                if verbosity == 2: print(nPub)
+                dicList.append(nPub)
+            except:
+                print('Could not get info for: ', publication) 
 
             t = random_intervals[i]
 
