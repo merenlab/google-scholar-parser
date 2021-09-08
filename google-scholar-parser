@@ -32,7 +32,7 @@ __requires__ = ["--user-ids", "--output-file"]
 __provides__ = ["author-publication-information.tsv"]
 __description__ =("A set of Python utilities to parse Google Scholar data")
 
-def main(author_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity):
+def main(author_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity, api_key):
 
     '''
     Implement Scholarly's ProxyGenerator to use ScraperAPI
@@ -48,29 +48,47 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
     for a_id in author_ids:
         if verbosity == 1 or verbosity == 2: print('Processing: ', a_id)
 
-        '''
-        Here it appears to be called for each author.
-        '''
-        pg.ScraperAPI('9a7b0111cac9972e465e0040b5f37bdf')
-        scholarly.use_proxy(pg)
+
 
         #Process valid IDs while flagging invalid IDs
         try:
+            '''
+            Here it appears to be called for each author.
+            '''
+            if api_key is not None:
+                pg.ScraperAPI(str(api_key)) #'9a7b0111cac9972e465e0040b5f37bdf' is the key from Daniel's free account
+                scholarly.use_proxy(pg)
+
+                id = scholarly.search_author_id(a_id)
+                name = id['name']
+                if verbosity == 1 or verbosity == 2: print(name)
 
 
-            id = scholarly.search_author_id(a_id)
-            name = id['name']
-            if verbosity == 1 or verbosity == 2: print(name)
+                author = scholarly.fill(id) #Fill author by ID
+                numPub = len(author['publications'])
+                if verbosity == 1 or verbosity == 2: print(name + ' has ' + str(numPub) + ' publications')
 
-            author = scholarly.fill(id) #Fill author by ID
-            numPub = len(author['publications'])
-            if verbosity == 1 or verbosity == 2: print(name + ' has ' + str(numPub) + ' publications')
+                random_intervals = genRandList(numPub) # See genRandList
 
-            random_intervals = genRandList(numPub) # See genRandList
+                article_limit = determine_article_limit(article_limit_precaution, numPub)
 
-            article_limit = determine_article_limit(article_limit_precaution, numPub)
+                dicList = gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity, pg, api_key)
 
-            dicList = gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity, pg)
+            else:
+
+                id = scholarly.search_author_id(a_id)
+                name = id['name']
+                if verbosity == 1 or verbosity == 2: print(name)
+
+                author = scholarly.fill(id) #Fill author by ID
+                numPub = len(author['publications'])
+                if verbosity == 1 or verbosity == 2: print(name + ' has ' + str(numPub) + ' publications')
+
+                random_intervals = genRandList(numPub) # See genRandList
+
+                article_limit = determine_article_limit(article_limit_precaution, numPub)
+
+                dicList = gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity, pg, api_key)
 
         except AttributeError:
             print('An AttributeError occurred for ' + a_id)
@@ -238,21 +256,28 @@ def genRandList(number_of_publications):
     return randList
 
 #Gather publication info
-def gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity, pg):
+def gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity, pg, api_key):
 
     i = 0
     for publication in author['publications']:
         if i < article_limit:
 
             try:
-                pg.ScraperAPI('9a7b0111cac9972e465e0040b5f37bdf')
-                scholarly.use_proxy(pg)
+                if api_key is not None:
+                    pg.ScraperAPI(str(api_key))
+                    scholarly.use_proxy(pg)
 
-                nPub = scholarly.fill(author['publications'][i])
-                if verbosity == 2: print(nPub)
-                dicList.append(nPub)
+                    nPub = scholarly.fill(author['publications'][i])
+                    if verbosity == 2: print(nPub)
+                    dicList.append(nPub)
+
+                else:
+                    nPub = scholarly.fill(author['publications'][i])
+                    if verbosity == 2: print(nPub)
+                    dicList.append(nPub)
+                    
             except:
-                print('Could not get info for: ', publication) 
+                print('Could not get info for: ', publication)
 
             t = random_intervals[i]
 
@@ -350,6 +375,8 @@ if __name__ == "__main__":
                                 help = "Output file with publication info in .tsv format")
 
     precautionsNamed = parser.add_argument_group('Precautions to Avoid Angering Google')
+    precautionsNamed.add_argument("--api-key", default = None,
+                                    help = "Key for Scraper API. Will allow for implementation of rotating proxies.")
     precautionsNamed.add_argument("--random-interval-precaution", choices = ['True', 'False'], default = 'True',
                                     help = "Scrapes article data at random intervals of 30-150s to appear more human and decrease the liklihood of making Google angry.(This feature will be turned on by default. Disable at your own risk...)")
     precautionsNamed.add_argument("--article-limit-precaution", choices = [None, 1, 5], type = int, default = None,
@@ -386,7 +413,8 @@ if __name__ == "__main__":
 
     user_ids = processInput(arg_dict)
     output_file = checkOutputFile(arg_dict)
+    api_key = arg_dict['api_key']
     random_interval_precaution = arg_dict['random_interval_precaution']
     article_limit_precaution = arg_dict['article_limit_precaution']
     verbosity = arg_dict['verbosity']
-    main(user_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity)
+    main(user_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity, api_key)
