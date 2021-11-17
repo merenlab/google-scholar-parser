@@ -1,4 +1,4 @@
-#!/usr/bin/enc/ python
+#!/usr/bin/env python
 #-*-coding: utf-8
 
 ###Imports
@@ -36,7 +36,6 @@ __provides__ = ["author-publication-information.tsv"]
 __description__ =("A set of Python utilities to parse Google Scholar data")
 
 def main(author_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity, api_key):
-
     '''
     Implement Scholarly's ProxyGenerator to use ScraperAPI
     Note to DN: check proper placement with Scholarly and or Scraper API people
