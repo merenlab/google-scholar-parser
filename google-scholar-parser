@@ -18,6 +18,10 @@ from scholarly import scholarly #https://scholarly.readthedocs.io/en/latest/quic
                                 #July 16 and 20 version trigger error messages with fake_useragent
                                     #Make adjustments with instructions found below
                                         #https://github.com/hellysmile/fake-useragent/pull/110/commits/d8ca49d341829adb1f0efa7a309337bdc1c2b978
+                                        #Above page no longer available
+                                    #Error message largely meaningless.
+                                        #See link for discussion: https://github.com/scholarly-python-package/scholarly/issues/313
+                                        #Can be suppressed, but other issues may arise in later trouble shooting if message is suppressed
 from scholarly import DOSException
 from scholarly import MaxTriesExceededException
 from scholarly import ProxyGenerator #Necessary for using ScraperAPI
@@ -38,11 +42,12 @@ __description__ =("A set of Python utilities to parse Google Scholar data")
 def main(author_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity, api_key):
 
     '''
-    Implement Scholarly's ProxyGenerator to use ScraperAPI
-    Note to DN: check proper placement with Scholarly and or Scraper API people
-    Response to DN from DN: Scholarly maintainers have said I should only need to call it once (although Scraper API people recommend multiple times)
-    Scholarly v1.4.2 worked, but v1.4.4 lost functionality as maintainers set up feature to redirect premium proxies to free proxies that would work inconsistently
-        Maintainers say issue will be addressed in v1.5
+    Implement Scholarly's ProxyGenerator to use ScraperAPI.
+    Scholarly maintainers have said it should only need to be called once (although Scraper API people recommend multiple times).
+    Scholarly v1.4.2 worked, but v1.4.4 lost functionality as maintainers set up feature to redirect premium proxies to free proxies that would work inconsistently.
+        Maintainers say issue will be addressed in v1.5.
+        Issue fixed in v1.4.5.
+        Now proxy set up once, but called before each action requiring the prox.y
     '''
 
     pg = ProxyGenerator()
@@ -50,38 +55,38 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
     if api_key is not None:
         while proxy_success == False:
             proxy_success = pg.ScraperAPI(str(api_key)) #'9a7b0111cac9972e465e0040b5f37bdf' is the key from Daniel's free account
-        print(pg)
-        if verbosity == 1 or verbosity == 2: print('Proxy setup was successful at ' + str(time.asctime(time.localtime(time.time()))))
+        if verbosity == 1 or verbosity == 2: print('\nProxy setup was successful at ' + str(time.asctime(time.localtime(time.time()))))
     else:
         pg = None
 
     #Retrieve the author's data, fill-in, and return list of dictionaries containing author and pub info
     dicList = []
     for a_id in author_ids:
-        if verbosity == 1 or verbosity == 2: print('Processing: ', a_id)
+        if verbosity == 1 or verbosity == 2: print('\nProcessing: ', a_id)
 
-        #Process valid IDs while flagging invalid IDs
+        ##Process valid IDs while flagging invalid IDs
         try:
 
-            #Search author ID
-            scholarly.use_proxy(pg, pg)
+            ###Search author ID
+            if pg is not None: scholarly.use_proxy(pg, pg)
             id = scholarly.search_author_id(a_id)
             name = id['name']
             if verbosity == 1 or verbosity == 2: print(name)
 
-            #Fill author container with with basic info for author and publications
-            #Also provides number of pubs
-            scholarly.use_proxy(pg, pg)
+            ###Fill author container with with basic info for author and publications
+            ###Also provides number of pubs
+            if pg is not None: scholarly.use_proxy(pg, pg)
             author = scholarly.fill(id, sections=['basics', 'publications'] )
             numPub = len(author['publications'])
             if verbosity == 1 or verbosity == 2: print(name + ' has ' + str(numPub) + ' publications')
 
-            #Generate random intervals to be used between scraping pub info if random interval preacution left on
-            random_intervals = genRandList(numPub)
-            #Set limit of 1, 5, or none for number of publications scraped; primarily for testing and troubleshootin purposes
+            ###Generate random intervals to be used between scraping pub info if random interval preacution left on
+            random_intervals = []
+            if random_interval_precaution == 'Yes': random_intervals = genRandList(numPub)
+            ###Set limit of 1, 5, or none for number of publications scraped; primarily for testing and troubleshootin purposes
             article_limit = determine_article_limit(article_limit_precaution, numPub)
 
-            #Create a list of dictionaries containing publication info
+            ###Create a list of dictionaries containing publication info
             dicList = gather_pub_info(author, random_intervals, dicList, random_interval_precaution, article_limit, verbosity, pg, api_key)
 
         except AttributeError:
@@ -99,6 +104,7 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
 
     #Produce final .tsv file
     produce_final_tsv(output_file, dicList, verbosity)
+    if verbosity == 1 or verbosity == 2: print(output_file + ' created at ' + str(time.asctime(time.localtime(time.time()))))
 
 #Create class for FilesNPathsError
 class FilesNPathsError(Exception):
@@ -111,13 +117,13 @@ def processInput(arg_dict):
     file_type = arg_dict['file_type']
 
     #Check input file and path
-    ##Is input a file or a single ID?
+    #Is input a file or a single ID?
     if len(user_ids) < 2:
         head, tail = os.path.split(user_ids[0])
         ext = pathlib.Path(tail).suffix
         ext = ext.lower()
 
-        ###Does input path exist?
+        ##Does input path exist?
         if len(head) > 0:
             if not os.path.exists(user_ids[0]):
                 try:
@@ -126,10 +132,10 @@ def processInput(arg_dict):
                     print('FilesNPathsError: Your input path does not exist. Please try again.')
                     sys.exit(1)
 
-        ###Does file exist?
+        ##Does file exist?
         if os.path.isfile(user_ids[0]):
 
-            ####Does user have permission to read?
+            ###Does user have permission to read?
             if not os.access(user_ids[0], os.R_OK):
                 try:
                     raise FilesNPathsError()
@@ -137,7 +143,7 @@ def processInput(arg_dict):
                     print('FilesNPathsError: You do not have permission to read this file :(')
                     sys.exit(1)
 
-            ####Is file empty?
+            ###Is file empty?
             if os.stat(user_ids[0]).st_size==0:
                 try:
                     raise FilesNPathsError()
@@ -145,7 +151,7 @@ def processInput(arg_dict):
                     print('FilesNPathsError: Your input file is empty :(')
                     sys.exit(1)
 
-            ####Is file REALLY plain text?
+            ###Is file REALLY plain text?
             try:
                 open(os.path.abspath(user_ids[0]), 'rU').read(512) #Do I need to close this?
             except UnicodeDecodeError:
@@ -155,52 +161,45 @@ def processInput(arg_dict):
                     print("FilesNPathsError: Your file does not seem to be plain a text file :/")
                     sys.exit(1)
 
-            '''
-            What type of file?
-                .csv
-                idk
-            '''
-            ####If .txt file
+            ###Process file if above conditions are met
+            ###If .txt file
             if ext == '.txt' and file_type == 'txt':
-
                 preIdList = canFileBeProcessed(user_ids, verbosity)
-                ####Process file if above conditions are met
                 author_ids = processPreIdList(preIdList, verbosity)
-                print(author_ids)
 
-            #If .tsv file
+            ###If .tsv file
             elif ext == '.tsv' and file_type == 'tsv':
-                if verbosity == 1 or verbosity == 2: print('Processing ' + str(user_ids[0]))
                 preIdList = canFileBeProcessed(user_ids, verbosity)
                 preIdList = [sub_id for combined_id in preIdList for sub_id in combined_id.split("\t")]
                 author_ids = processPreIdList(preIdList, verbosity)
 
+            ###If .csv file
             elif ext =='.csv' and file_type == 'csv':
-                if verbosity == 1 or verbosity == 2: print('Processing ' + str(user_ids[0]))
                 preIdList = canFileBeProcessed(user_ids, verbosity)
                 preIdList = [sub_id for combined_id in preIdList for sub_id in combined_id.split(",")]
                 author_ids = processPreIdList(preIdList, verbosity)
 
+            ###If idk
             elif ext != '.txt' and ext != '.tsv' and ext != '.csv' and file_type == 'idk':
-                if verbosity == 1 or verbosity == 2: print('You really should know what kind of file you want to process, but we will do our best :)\nProcessing ' + str(user_ids[0]))
+                if verbosity == 1 or verbosity == 2: print('You really should know what kind of file you want to process, but we will do our best :)')
                 preIdList = canFileBeProcessed(user_ids, verbosity)
                 preIdList = [sub_id for combined_id in preIdList for sub_id in combined_id.split()]
                 preIdList = [sub_id for combined_id in preIdList for sub_id in combined_id.split(",")]
                 author_ids = processPreIdList(preIdList, verbosity)
-                print(author_ids)
 
             else:
                 print('If you would like to process a file other than a .txt file, please use the \'--file-type\' option in the command line, making sure that the file extension matches your selection for \'--file-type\'')
+                sys.exit(1)
 
-
+        ##If --user-ids input has one element and is not a file
+        ##Process as single ID
         else:
-            print(ext, file_type)
-
             if verbosity == 1 or verbosity == 2: print("Input does not appear to be a file. Therefore it will be processed as a single user ID.")
             if verbosity == 1 or verbosity == 2: print('Processing ID:')
             author_ids = [id.replace(',', '') for id in user_ids]
             if verbosity == 1 or verbosity == 2: print(author_ids[0])
 
+    ##If --user-ids input is a list of IDs
     ##Process list of IDs
     else:
         if verbosity == 1 or verbosity == 2: print('You have entered a list of IDs.')
@@ -209,28 +208,38 @@ def processInput(arg_dict):
         if verbosity == 1 or verbosity == 2: print(*author_ids, sep='\n')
     return author_ids
 
+#Can the input file be opened
 def canFileBeProcessed(user_ids, verbosity):
     if verbosity == 1 or verbosity == 2: print('Processing ' + str(user_ids[0]))
-    #print(user_ids, user_ids[0])
-    #Can file be opened?
+
+    #Try opening files
+    #Process file into preIdList
     try:
         with open(user_ids[0], 'rU') as in_f:
             preIdList = [id.strip() for id in in_f]
     except:
         print('Your file could not be processed :( Please make sure it is in fact a properly formatted text file.')
         sys.exit(1)
+
     return preIdList
 
+#Process preIdList
+#Create final list of author_ids
 def processPreIdList(preIdList, verbosity):
+
+    #Remove commas
     author_ids = [id.replace(',', '') for id in preIdList]
 
-    ####Remove lines with multiple strings
+    #Remove lines with multiple strings
     if verbosity == 1 or verbosity == 2:
         author_ids = list(filter(None, [id if len(id.split()) == 1 else print('The following ID was removed ' + str(id)) for id in author_ids]))
     else:
         author_ids = list(filter(None, [id  for id in author_ids if len(id.split()) == 1]))
 
-    if verbosity == 1 or verbosity == 2: print('The following author ids will be processed:', author_ids)
+    if verbosity == 1 or verbosity == 2:
+        print('\nThe following author ids will be processed:')
+        print(*author_ids, sep='\n')
+
     return author_ids
 
 #Check output file and path
@@ -241,7 +250,7 @@ def checkOutputFile(arg_dict):
     head, tail = os.path.split(output_file)
     if len(head) > 0:
 
-        ##Does path exist?
+        #Does path exist?
         if not os.path.exists(head):
             try:
                 raise FilesNPathsError()
@@ -249,7 +258,7 @@ def checkOutputFile(arg_dict):
                 print('FilesNPathsError: Your output path is invalid. Please try again.')
                 sys.exit(1)
 
-        ##Does user have permissions to write to directory?
+        #Does user have permissions to write to directory?
         if not os.access(output_file, os.W_OK):
             try:
                 raise FilesNPathsError()
@@ -257,7 +266,7 @@ def checkOutputFile(arg_dict):
                 print('FilesNPathsError: You do not have permission to write to this directory :(')
                 sys.exit(1)
 
-    ##Does File Already Exist?
+    #Does File Already Exist?
     if os.path.isfile(output_file):
         if replace_file == 'Yes':
             if verbosity == 1 or verbosity == 2: print('Proceeding to overwrite existing file: ' + output_file)
@@ -272,6 +281,7 @@ def checkOutputFile(arg_dict):
 
 #Allow user to set article limit (technically of 1 or 5) for testing and troubleshooting purposes (helps to avoid upsetting Goliath)
 def determine_article_limit(article_limit_precaution, number_of_publications):
+
     limit = 0
 
     if article_limit_precaution == None:
@@ -285,12 +295,15 @@ def determine_article_limit(article_limit_precaution, number_of_publications):
 
 #Generate random intervals for time between accessing publications as means to avoid upsetting Goliath
 def genRandList(number_of_publications):
+
     randList = []
     n = 0
+
     while n < number_of_publications:
         n = n + 1
         ran = randint(30, 150)
         randList.append(ran)
+
     return randList
 
 #Gather publication info
@@ -302,8 +315,8 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
         if i < article_limit:
 
             try:
-                ###Fill publication info and append dictionary to list
-                scholarly.use_proxy(pg, pg)
+                ##Fill publication info and append dictionary to list
+                if pg is not None: scholarly.use_proxy(pg, pg)
                 nPub = scholarly.fill(author['publications'][i])
                 if verbosity == 2: print(nPub)
                 dicList.append(nPub)
@@ -319,14 +332,13 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
                 print(f'Could not get info for: {publication}, exception: {exc}')
                 if verbosity == 1 or verbosity == 2: print("Could NOT gather data for pub " + str(i+1))
 
-            t = random_intervals[i]
-
-            i = i + 1
-
             ##Night night for program for randomly determined interval in random_intervals list
-            if random_interval_precaution == 'True':
+            if random_interval_precaution == 'Yes':
+                t = random_intervals[i]
                 if verbosity == 1 or verbosity == 2: print("Sleep for " + str(t) + " seconds")
                 time.sleep(t)
+
+            i = i + 1
 
     return dicList
 
@@ -417,7 +429,7 @@ if __name__ == "__main__":
     precautionsNamed = parser.add_argument_group('Precautions to Avoid Angering Google a.k.a Goliath')
     precautionsNamed.add_argument("--api-key", default = None,
                                     help = "Key for Scraper API. Will allow for implementation of rotating proxies.")
-    precautionsNamed.add_argument("--random-interval-precaution", choices = ['True', 'False'], default = 'False',
+    precautionsNamed.add_argument("--random-interval-precaution", choices = ['Yes', 'No'], default = 'No',
                                     help = "Scrapes article data at random intervals of 30-150s to appear more human and decrease the liklihood of making Google angry.(This feature will be turned on by default. Disable at your own risk...)")
     precautionsNamed.add_argument("--article-limit-precaution", choices = [None, 1, 5], type = int, default = None,
                                     help = "Limit the number of articles scraped from Google to 1 or 5 for testing purposes.")
@@ -426,19 +438,13 @@ if __name__ == "__main__":
     miscellaneousNamed = parser.add_argument_group('Arguments to customize your experience with this program.')
     miscellaneousNamed.add_argument('--verbosity', choices = [0, 1, 2], type = int, default = 1,
                                         help = 'Customize how much information you want concerning the progress of your search. (Default equals 1. Error messages will always be printed because there is always room for self-improvement ;)')
-    miscellaneousNamed.add_argument('--replace-file', choices = ['No', 'Yes'], default = 'No',
+    miscellaneousNamed.add_argument('--replace-file', choices = ['Yes','No'], default = 'No',
                                         help = 'Force program to overwrite existing output files.')
     miscellaneousNamed.add_argument('--file-type', choices = ['txt', 'tsv', 'csv', 'idk'], default = 'txt',
-                                        help = 'The preferred file type is .txt, but if you really want to try another basic text format you can try.')
+                                        help = 'The preferred file type is .txt, but if you really want to try another basic text format you can.')
 
-    #Print full help message if proper arguments not given
+    #Check if proper arguments are given
     known_args, unknown_args = parser.parse_known_args()
-
-    '''
-    if known_args.user_ids is None or known_args.output_file is None:
-        parser.error('--user-ids and --output-file are required arguments. Please make sure these fields are entered.')
-        sys.exit(1)
-    '''
 
     if unknown_args != []:
         print("It appears you have entered an invalid argument :/")
@@ -447,14 +453,21 @@ if __name__ == "__main__":
 
     arg_dict = known_args.__dict__
 
-    if arg_dict['verbosity'] == 1:
+    if arg_dict['verbosity'] == 1 or arg_dict['verbosity'] == 2: print('\nProgram started at ' + str(time.asctime(time.localtime(time.time()))))
+
+    if arg_dict['verbosity'] == 1 or arg_dict['verbosity'] == 2:
         print('\nYou entered the following arguments:')
         for k, v in arg_dict.items(): print(k, ': ', v)
         print('\n')
 
+    #Required to disable useless warning (recommended by Scholarly maintainers)
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+    #Process --user-ids input
     user_ids = processInput(arg_dict)
+
+    #Process --output-file input
     output_file = checkOutputFile(arg_dict)
 
+    #Main
     main(user_ids, output_file, arg_dict['random_interval_precaution'], arg_dict['article_limit_precaution'], arg_dict['verbosity'], arg_dict['api_key'])
