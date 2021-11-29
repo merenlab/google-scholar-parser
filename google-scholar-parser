@@ -2,33 +2,36 @@
 #-*-coding: utf-8
 
 ###Imports
-import argparse
-from contextlib import redirect_stderr
-import csv
 import io
 import os
-import pathlib
-from random import *
 import re
-from scholarly import scholarly #https://scholarly.readthedocs.io/en/latest/quickstart.html
-                                #search-for-an-author-by-the-id-visible-in-the-url-of-an-authors-profile
-                                #make adjustments with instructions found below:
-                                    #https://github.com/scholarly-python-package/scholarly/issues/297
-                                    #Adjustments made in July 16 and 20  versions
-                                #July 16 and 20 version trigger error messages with fake_useragent
-                                    #Make adjustments with instructions found below
-                                        #https://github.com/hellysmile/fake-useragent/pull/110/commits/d8ca49d341829adb1f0efa7a309337bdc1c2b978
-                                        #Above page no longer available
-                                    #Error message largely meaningless.
-                                        #See link for discussion: https://github.com/scholarly-python-package/scholarly/issues/313
-                                        #Can be suppressed, but other issues may arise in later trouble shooting if message is suppressed
-from scholarly import DOSException
-from scholarly import MaxTriesExceededException
-from scholarly import ProxyGenerator #Necessary for using ScraperAPI
 import sys
+import csv
 import time
-from time import sleep
+import pathlib
 import urllib3
+import argparse
+from contextlib import redirect_stderr
+
+from random import *
+
+# try to import scholarly to make sure it is installed
+try:
+    import scholarly
+except ImportError:
+    print("You need the Python module 'scholarly' to be installed on your system for this program to work. Try running this in your terminal: 'pip install scholarly==1.4.5'.")
+    sys.exit()
+
+from scholarly import scholarly
+
+try:
+    from scholarly import DOSException
+    from scholarly import MaxTriesExceededException
+    from scholarly import ProxyGenerator #Necessary for using ScraperAPI
+except ImportError:
+    print("You have the wrong version of scholarly :/ Try running this in your terminal: 'pip install --upgrade scholarly==1.4.5'.")
+    sys.exit()
+
 
 __author__ = "Daniel Adam Nuccio"
 __copyright__ = "X"
