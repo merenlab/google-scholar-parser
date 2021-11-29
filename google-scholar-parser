@@ -34,12 +34,9 @@ except ImportError:
 
 
 __author__ = "Daniel Adam Nuccio"
-__copyright__ = "X"
-__liscense__ = "X"
+__license__ = "GPL 3.0"
 __maintainer__ = "Daniel Adam Nuccio"
 __email__ = "z1741403@students.niu.edu"
-__requires__ = ["--user-ids", "--output-file"]
-__provides__ = ["author-publication-information.tsv"]
 __description__ =("A set of Python utilities to parse Google Scholar data")
 
 def main(author_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity, api_key):
