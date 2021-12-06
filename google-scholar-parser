@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.9
 #-*-coding: utf-8
 
 ###Imports
@@ -11,10 +11,6 @@ import time
 import pathlib
 import urllib3
 import argparse
-
-from habanero import Crossref
-
-from Levenshtein import ratio
 
 from contextlib import redirect_stderr
 
@@ -37,6 +33,30 @@ except ImportError:
     print("You have the wrong version of scholarly :/ Try running this in your terminal: 'pip install --upgrade scholarly==1.4.5'.")
     sys.exit()
 
+try:
+    import habanero
+except ImportError:
+    print("You need the Python module 'habanero' to be installed on your system for this program to work. Try running this in your terminal: 'pip install habanero==1.0.0'.")
+    sys.exit()
+
+try:
+    from habanero import Crossref
+except ImportError:
+    print("You have the wrong version of habanero :/ Try running this in your terminal: 'pip install --upgrade habanero==1.0.0'.")
+    sys.exit()
+
+try:
+    import Levenshtein
+except ImportError:
+    print("You need the Python module 'Levenshtein' to be installed on your system for this program to work. Try running this in your terminal: 'pip install Levenshtein==0.16.0'.")
+    sys.exit()
+
+try:
+    from Levenshtein import ratio
+except ImportError:
+    print("You have the wrong version of Levenshtein :/ Try running this in your terminal: 'pip install --upgrade Levenshtein==0.16.0'.")
+    sys.exit()
+
 
 __author__ = "Daniel Adam Nuccio"
 __license__ = "GPL 3.0"
@@ -44,7 +64,7 @@ __maintainer__ = "Daniel Adam Nuccio"
 __email__ = "z1741403@students.niu.edu"
 __description__ =("A set of Python utilities to parse Google Scholar data")
 
-def main(author_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity, api_key, levenschtein_threshold):
+def main(author_ids, output_file, random_interval_precaution, article_limit_precaution, verbosity, api_key, levenshtein_threshold):
     '''
     Implement Scholarly's ProxyGenerator to use ScraperAPI.
     Scholarly maintainers have said it should only need to be called once (although Scraper API people recommend multiple times).
@@ -107,7 +127,7 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
             print(f'Could not get info for: {a_id}, exception: {exc}')
 
     #Produce final .tsv file
-    produce_final_tsv(output_file, dicList, verbosity, levenschtein_threshold)
+    produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold)
     if verbosity == 1 or verbosity == 2: print(output_file + ' created at ' + str(time.asctime(time.localtime(time.time()))))
 
 #Create class for FilesNPathsError
@@ -347,10 +367,10 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
     return dicList
 
 #Write publication info to a .tsv file
-def produce_final_tsv(output_file, dicList, verbosity, levenschtein_threshold):
+def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold):
     with open(output_file, 'wt') as o_file:
         tsv_writer = csv.writer(o_file, delimiter='\t')
-        tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'Levenschtein Ratio', 'DOI'])
+        tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'levenshtein Ratio', 'DOI'])
         for v in dicList:
             title = ''
             auth = ''
@@ -396,9 +416,9 @@ def produce_final_tsv(output_file, dicList, verbosity, levenschtein_threshold):
             else:
                 page = 'NA'
 
-            levenSchteinRatio, doi = getDOI(title, levenschtein_threshold, verbosity)
+            levenshteinRatio, doi = getDOI(title, levenshtein_threshold, verbosity)
 
-            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, levenSchteinRatio, doi])
+            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, levenshteinRatio, doi])
 
 #Reformat authors from scholarly format to desired format
 def format_authors(authors_in_scholarly_format):
@@ -417,25 +437,25 @@ def format_authors(authors_in_scholarly_format):
 
     return new_author_string
 
-def getDOI(title, levenschtein_threshold, verbosity):
+def getDOI(title, levenshtein_threshold, verbosity):
     try:
         cr = Crossref()
         results = cr.works(query = title, limit = 1)
         preDOI = [z['DOI'] for z in results['message']['items'] ]
         doiTitle = [z['title'] for z in results['message']['items'] ]
 
-        levenSchteinRatio = ratio(title.lower(), doiTitle[0][0].lower())
+        levenshteinRatio = ratio(title.lower(), doiTitle[0][0].lower())
 
-        if levenSchteinRatio >= levenschtein_threshold:
+        if levenshteinRatio >= levenshtein_threshold:
             finalDOI = preDOI[0]
         else:
             finalDOI = 'Levenshtein ratio did not match or exceed threshold'
     except:
         print('Could not get DOI for: ' + title)
-        levenSchteinRatio = 'NA'
+        levenshteinRatio = 'NA'
         doi = 'Could not get DOI'
 
-    return levenSchteinRatio, finalDOI
+    return levenshteinRatio, finalDOI
 
 if __name__ == "__main__":
     #Use Argparse to Take In Commandline Arguments
@@ -468,7 +488,7 @@ if __name__ == "__main__":
                                         help = 'Force program to overwrite existing output files.')
     miscellaneousNamed.add_argument('--file-type', choices = ['txt', 'tsv', 'csv', 'idk'], default = 'txt',
                                         help = 'The preferred file type is .txt, but if you really want to try another basic text format you can.')
-    miscellaneousNamed.add_argument('--levenschtein-threshold', default = 0.95,
+    miscellaneousNamed.add_argument('--levenshtein-threshold', default = 0.95,
                                         help = 'Similarity threshold between 0.0-1.0 for Title and DOI reverse lookup title')
 
     #Check if proper arguments are given
@@ -498,4 +518,4 @@ if __name__ == "__main__":
     output_file = checkOutputFile(arg_dict)
 
     #Main
-    main(user_ids, output_file, arg_dict['random_interval_precaution'], arg_dict['article_limit_precaution'], arg_dict['verbosity'], arg_dict['api_key'], arg_dict['levenschtein_threshold'])
+    main(user_ids, output_file, arg_dict['random_interval_precaution'], arg_dict['article_limit_precaution'], arg_dict['verbosity'], arg_dict['api_key'], arg_dict['levenshtein_threshold'])
