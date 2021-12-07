@@ -437,25 +437,27 @@ def format_authors(authors_in_scholarly_format):
 
     return new_author_string
 
+
 def getDOI(title, levenshtein_threshold, verbosity):
+    # get an ASCII-only version of the title to avoid downstream API snafu:
+    ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
+
     try:
         cr = Crossref()
-        results = cr.works(query = title, limit = 1)
+        results = cr.works(query = ascii_title, limit = 1)
         preDOI = [z['DOI'] for z in results['message']['items'] ]
         doiTitle = [z['title'] for z in results['message']['items'] ]
 
         levenshteinRatio = ratio(title.lower(), doiTitle[0][0].lower())
 
         if levenshteinRatio >= levenshtein_threshold:
-            finalDOI = preDOI[0]
+            return levenshteinRatio, preDOI[0]
         else:
-            finalDOI = 'Levenshtein ratio did not match or exceed threshold'
-    except:
-        print('Could not get DOI for: ' + title)
-        levenshteinRatio = 'NA'
-        doi = 'Could not get DOI'
+            return levenshteinRatio, ''
+    except Exception as e:
+        print(f'\n - Failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
+        return 0, ''
 
-    return levenshteinRatio, finalDOI
 
 if __name__ == "__main__":
     #Use Argparse to Take In Commandline Arguments
