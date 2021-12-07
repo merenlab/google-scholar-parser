@@ -1,0 +1,4 @@
+urllib3
+scholarly==1.4.5
+habanero==1.0.0
+Levenshtein==0.16.0
