@@ -456,7 +456,10 @@ def getDOI(title, levenshtein_threshold, verbosity):
             return levenshteinRatio, ''
     except Exception as e:
         print(f'\n - Failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
+        print('\nTaking a 60s nap')
+        time.sleep(60)
         return 0, ''
+
 
 
 if __name__ == "__main__":
