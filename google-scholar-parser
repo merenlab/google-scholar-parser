@@ -16,6 +16,14 @@ from contextlib import redirect_stderr
 
 from random import *
 
+###More Imports
+import json
+import requests
+import urllib.parse
+from urllib.error import HTTPError
+from urllib.parse import quote_plus, urlencode
+from urllib.request import urlopen, Request
+
 # try to import scholarly to make sure it is installed
 try:
     import scholarly
@@ -127,7 +135,7 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
             print(f'Could not get info for: {a_id}, exception: {exc}')
 
     #Produce final .tsv file
-    produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold)
+    produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key)
     if verbosity == 1 or verbosity == 2: print(output_file + ' created at ' + str(time.asctime(time.localtime(time.time()))))
 
 #Create class for FilesNPathsError
@@ -367,7 +375,7 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
     return dicList
 
 #Write publication info to a .tsv file
-def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold):
+def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key):
     with open(output_file, 'wt') as o_file:
         tsv_writer = csv.writer(o_file, delimiter='\t')
         tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'levenshtein Ratio', 'DOI'])
@@ -416,7 +424,10 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold):
             else:
                 page = 'NA'
 
-            levenshteinRatio, doi = getDOI(title, levenshtein_threshold, verbosity)
+
+            doiReq = getDOI(title, api_key, verbosity)
+
+            levenshteinRatio, doi = processDOI(title, doiReq, levenshtein_threshold, verbosity)
 
             tsv_writer.writerow([title, auth, year, jour, volu, numb, page, levenshteinRatio, doi])
 
@@ -437,7 +448,7 @@ def format_authors(authors_in_scholarly_format):
 
     return new_author_string
 
-
+'''
 def getDOI(title, levenshtein_threshold, verbosity):
     # get an ASCII-only version of the title to avoid downstream API snafu:
     ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
@@ -459,8 +470,65 @@ def getDOI(title, levenshtein_threshold, verbosity):
         print('\nTaking a 60s nap')
         time.sleep(60)
         return 0, ''
+'''
 
+def getDOI(title, api_key, verbosity):
 
+    # get an ASCII-only version of the title to avoid downstream API snafu:
+    ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
+
+    try:
+
+        base = 'https://api.crossref.org/works?rows=5&query.title='
+        url = base + urllib.parse.quote_plus(ascii_title)
+        payload = {'api_key': api_key, 'url': str(url)}
+        r = requests.get('http://api.scraperapi.com', params=payload)
+        doiReq = r.text
+
+        return doiReq
+
+    except Exception as e:
+        print(f'\n - Failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
+
+        return 0
+
+def processDOI(title, doiReq, levenshtein_threshold, verbosity):
+
+    # get an ASCII-only version of the title to avoid downstream API snafu:
+    ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
+
+    if doiReq != 0:
+
+        try:
+
+            if verbosity == 1 or verbosity == 2: print('Retrieving doi for: ' + str(ascii_title) + ' at ' + str(time.asctime(time.localtime(time.time()))) )
+            data = json.loads(doiReq)
+            items = data['message']['items']
+
+            for item in items:
+                if 'title' not in item:
+                    continue
+                else:
+                    preDOI = [z['DOI'] for z in data['message']['items'] ]
+                    doiTitle = [z['title'] for z in data['message']['items'] ]
+
+            levenshteinRatio = ratio(ascii_title.lower(), doiTitle[0][0].lower())
+
+            if levenshteinRatio >= levenshtein_threshold:
+                return levenshteinRatio, preDOI[0]
+            else:
+                return levenshteinRatio, ''
+
+            return levenshteinRatio, preDOI[0]
+
+        except Exception as e:
+            print(f'\n - Failed to get DOI for the pub "{title}" due to issue with Cross Ref data: "{e}".')
+            return 0, 'NA'
+    elif content == 0:
+        return 'Failure', ''
+
+    else:
+        return 'Unknown error', ''
 
 if __name__ == "__main__":
     #Use Argparse to Take In Commandline Arguments
