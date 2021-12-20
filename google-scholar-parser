@@ -378,7 +378,7 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
 def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key):
     with open(output_file, 'wt') as o_file:
         tsv_writer = csv.writer(o_file, delimiter='\t')
-        tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'levenshtein Ratio', 'DOI'])
+        tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'DOI Request Status Code', 'levenshtein Ratio', 'DOI'])
         for v in dicList:
             title = ''
             auth = ''
@@ -425,11 +425,15 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
                 page = 'NA'
 
 
-            doiReq = getDOI(title, api_key, verbosity)
+            # get an ASCII-only version of the title to avoid downstream API snafu:
+            ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
 
-            levenshteinRatio, doi = processDOI(title, doiReq, levenshtein_threshold, verbosity)
+            #Get make doi request
+            req_status_code, doiReq = getDOI(ascii_title, api_key, verbosity)
 
-            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, levenshteinRatio, doi])
+            levenshteinRatio, doi = processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, req_status_code)
+
+            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, req_status_code, levenshteinRatio, doi])
 
 #Reformat authors from scholarly format to desired format
 def format_authors(authors_in_scholarly_format):
@@ -472,32 +476,35 @@ def getDOI(title, levenshtein_threshold, verbosity):
         return 0, ''
 '''
 
-def getDOI(title, api_key, verbosity):
-
-    # get an ASCII-only version of the title to avoid downstream API snafu:
-    ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
+def getDOI(ascii_title, api_key, verbosity):
 
     try:
 
         base = 'https://api.crossref.org/works?rows=5&query.title='
         url = base + urllib.parse.quote_plus(ascii_title)
-        payload = {'api_key': api_key, 'url': str(url)}
-        r = requests.get('http://api.scraperapi.com', params=payload)
-        doiReq = r.text
 
-        return doiReq
+        if api_key is not None:
+            payload = {'api_key': api_key, 'url': str(url)}
+            r = requests.get('http://api.scraperapi.com', params=payload)
+        else:
+            r = requests.get(url)
+
+        request_status_code = r.status_code
+
+        if request_status_code == 200:
+            doiReq = r.text
+            return request_status_code, doiReq
+        else:
+            return request_status_code, ''
 
     except Exception as e:
         print(f'\n - Failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
 
-        return 0
+        return 0, ''
 
-def processDOI(title, doiReq, levenshtein_threshold, verbosity):
+def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, req_status_code):
 
-    # get an ASCII-only version of the title to avoid downstream API snafu:
-    ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
-
-    if doiReq != 0:
+    if req_status_code == 200:
 
         try:
 
@@ -519,16 +526,14 @@ def processDOI(title, doiReq, levenshtein_threshold, verbosity):
             else:
                 return levenshteinRatio, ''
 
-            return levenshteinRatio, preDOI[0]
+            #return levenshteinRatio, preDOI[0]
 
         except Exception as e:
-            print(f'\n - Failed to get DOI for the pub "{title}" due to issue with Cross Ref data: "{e}".')
+            print(f'\n - Failed to get DOI for the pub "{ascii_title}" due to issue with Cross Ref data: "{e}".')
             return 0, 'NA'
-    elif content == 0:
+    else:
         return 'Failure', ''
 
-    else:
-        return 'Unknown error', ''
 
 if __name__ == "__main__":
     #Use Argparse to Take In Commandline Arguments
