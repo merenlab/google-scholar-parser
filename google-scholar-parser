@@ -429,11 +429,11 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
             ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
 
             #Get make doi request
-            req_status_code, doiReq = getDOI(ascii_title, api_key, verbosity)
+            status, doiReq = getDOI(ascii_title, api_key, verbosity)
 
-            levenshteinRatio, doi = processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, req_status_code)
+            levenshteinRatio, doi = processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status)
 
-            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, req_status_code, levenshteinRatio, doi])
+            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, status, levenshteinRatio, doi])
 
 #Reformat authors from scholarly format to desired format
 def format_authors(authors_in_scholarly_format):
@@ -451,30 +451,6 @@ def format_authors(authors_in_scholarly_format):
         new_author_string = new_author_string + last_name + ', ' + ' '.join(first_and_mi) + "; "
 
     return new_author_string
-
-'''
-def getDOI(title, levenshtein_threshold, verbosity):
-    # get an ASCII-only version of the title to avoid downstream API snafu:
-    ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
-
-    try:
-        cr = Crossref()
-        results = cr.works(query = ascii_title, limit = 1)
-        preDOI = [z['DOI'] for z in results['message']['items'] ]
-        doiTitle = [z['title'] for z in results['message']['items'] ]
-
-        levenshteinRatio = ratio(title.lower(), doiTitle[0][0].lower())
-
-        if levenshteinRatio >= levenshtein_threshold:
-            return levenshteinRatio, preDOI[0]
-        else:
-            return levenshteinRatio, ''
-    except Exception as e:
-        print(f'\n - Failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
-        print('\nTaking a 60s nap')
-        time.sleep(60)
-        return 0, ''
-'''
 
 def getDOI(ascii_title, api_key, verbosity):
 
@@ -495,20 +471,37 @@ def getDOI(ascii_title, api_key, verbosity):
             doiReq = r.text
             return request_status_code, doiReq
         else:
-            return request_status_code, ''
+            print('Attempting DOI retrieval via backup')
+            backupStatus, doiReq = backupDOIRetrieval(ascii_title, verbosity)
+            return backupStatus, doiReq
 
     except Exception as e:
         print(f'\n - Failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
 
         return 0, ''
 
-def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, req_status_code):
+def backupDOIRetrieval (ascii_title, verbosity):
 
-    if req_status_code == 200:
+    try:
+        cr = Crossref()
+        results = cr.works(query = ascii_title, limit = 1)
+        backupStatus = results['status']
+
+        return backupStatus, results
+
+    except Exception as e:
+        print(f'\n - Backup failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
+        print('\nTaking a 10s nap')
+        time.sleep(10)
+        return 0, ''
+
+def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status):
+
+    if status == 200:
 
         try:
 
-            if verbosity == 1 or verbosity == 2: print('Retrieving doi for: ' + str(ascii_title) + ' at ' + str(time.asctime(time.localtime(time.time()))) )
+            if verbosity == 1 or verbosity == 2: print('Processing doi for: ' + str(ascii_title) + ' at ' + str(time.asctime(time.localtime(time.time()))) )
             data = json.loads(doiReq)
             items = data['message']['items']
 
@@ -526,12 +519,33 @@ def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, req_status
             else:
                 return levenshteinRatio, ''
 
-            #return levenshteinRatio, preDOI[0]
 
         except Exception as e:
             print(f'\n - Failed to get DOI for the pub "{ascii_title}" due to issue with Cross Ref data: "{e}".')
             return 0, 'NA'
+
+    elif status == 'ok':
+
+        try:
+            if verbosity == 1 or verbosity == 2: print('Retrieving doi for: ' + str(ascii_title) + ' at ' + str(time.asctime(time.localtime(time.time()))) )
+            preDOI = [z['DOI'] for z in doiReq['message']['items'] ]
+            doiTitle = [z['title'] for z in doiReq['message']['items'] ]
+
+            levenshteinRatio = ratio(ascii_title.lower(), doiTitle[0][0].lower())
+
+            if levenshteinRatio >= levenshtein_threshold:
+                return levenshteinRatio, preDOI[0]
+            else:
+                return levenshteinRatio, ''
+
+        except Exception as e:
+
+            print(f'\n - Backup failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
+            return 'Failure', ''
+
+
     else:
+        print(f'\n - Backup failed to get DOI for the pub "{title}" as someone was not happy: "{e}".')
         return 'Failure', ''
 
 
