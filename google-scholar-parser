@@ -380,36 +380,13 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
         tsv_writer = csv.writer(o_file, delimiter='\t')
         tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'DOI Request Status Code', 'levenshtein Ratio', 'DOI'])
         for v in dicList:
-            title = ''
-            auth = ''
-            year = ''
-            jour = ''
-            volu = ''
-            numb = ''
-            page = ''
-
-            if 'title' in v['bib']:
-                title = v['bib']['title']
-                if verbosity == 2: print(title)
-
-            if 'author' in v['bib']:
-                auth = format_authors(v['bib']['author'])
-
-            if 'pub_year' in v['bib']:
-                year = v['bib']['pub_year']
-
-            if 'journal' in v['bib']:
-                jour = v['bib']['journal']
-
-            if 'volume' in v['bib']:
-                volu = v['bib']['volume']
-
-            if 'number' in v['bib']:
-                numb = v['bib']['number']
-
-            if 'pages' in v['bib']:
-                page = v['bib']['pages']
-
+            title = v['bib']['title'] if 'title' in v['bib'] else ''
+            auth = format_authors(v['bib']['author']) if 'author' in v['bib'] else ''
+            year = v['bib']['pub_year'] if 'pub_year' in v['bib'] else ''
+            jour = v['bib']['journal'] if 'journal' in v['bib'] else ''
+            volu = v['bib']['volume'] if 'volume' in v['bib'] else ''
+            numb = v['bib']['number'] if 'number' in v['bib'] else ''
+            page = v['bib']['pages'] if 'pages' in v['bib'] else ''
 
             # get an ASCII-only version of the title to avoid downstream API snafu:
             ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
@@ -418,6 +395,9 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
             status, doiReq = getDOI(ascii_title, api_key, verbosity)
 
             levenshteinRatio, doi = processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status)
+
+            if verbosity == 2:
+                print(f'Title: "{title}"; Doi: {doi}')
 
             tsv_writer.writerow([title, auth, year, jour, volu, numb, page, status, levenshteinRatio, doi])
 
