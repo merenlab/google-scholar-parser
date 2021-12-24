@@ -391,38 +391,24 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
             if 'title' in v['bib']:
                 title = v['bib']['title']
                 if verbosity == 2: print(title)
-            else:
-                title = 'NA'
 
             if 'author' in v['bib']:
                 auth = format_authors(v['bib']['author'])
-            else:
-                auth = 'NA'
 
             if 'pub_year' in v['bib']:
                 year = v['bib']['pub_year']
-            else:
-                year = 'NA'
 
             if 'journal' in v['bib']:
                 jour = v['bib']['journal']
-            else:
-                jour = 'NA'
 
             if 'volume' in v['bib']:
                 volu = v['bib']['volume']
-            else:
-                volu = 'NA'
 
             if 'number' in v['bib']:
                 numb = v['bib']['number']
-            else:
-                numb = 'NA'
 
             if 'pages' in v['bib']:
                 page = v['bib']['pages']
-            else:
-                page = 'NA'
 
 
             # get an ASCII-only version of the title to avoid downstream API snafu:
@@ -522,7 +508,7 @@ def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status):
 
         except Exception as e:
             print(f'\n - Failed to get DOI for the pub "{ascii_title}" due to issue with Cross Ref data: "{e}".')
-            return 0, 'NA'
+            return 0, ''
 
     elif status == 'ok':
 
