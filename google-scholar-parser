@@ -419,20 +419,32 @@ def format_authors(authors_in_scholarly_format):
     return new_author_string
 
 def getDOI(ascii_title, api_key, verbosity):
+    '''
+    Function that creates url Cross Ref API base and urllib-processed title
+        and then attempts to retrieve doi info via Requests package and Cross Ref API
+
+    Also used optional Scraper API if if API key is given.
+    '''
 
     try:
 
+        #Create url for doi retrieval through API Cross Ref
         base = 'https://api.crossref.org/works?rows=5&query.title='
         url = base + urllib.parse.quote_plus(ascii_title)
 
+        #Setup Scraper API key for doi retrieval if one is given
+        #Then use make a request through API Cross Ref with or without Scraper API depending on the above
         if api_key is not None:
             payload = {'api_key': api_key, 'url': str(url)}
             r = requests.get('http://api.scraperapi.com', params=payload)
         else:
             r = requests.get(url)
 
+        #Get request status code
         request_status_code = r.status_code
 
+        #Return request status code and info if request successful
+        #Use backup doi retrieval system if request is unsuccessful
         if request_status_code == 200:
             doiReq = r.text
             return request_status_code, doiReq
@@ -447,6 +459,12 @@ def getDOI(ascii_title, api_key, verbosity):
         return 0, ''
 
 def backupDOIRetrieval (ascii_title, verbosity):
+    '''
+    Backup doi retrival function:
+    Attempts doi retrival with method from Habanero.
+    This method cannot be used with Scraper API.
+    If unsuccessful, the code is put to sleep for 10s as Cross Ref API may be becoming overwhelmed
+    '''
 
     try:
         cr = Crossref()
@@ -462,7 +480,17 @@ def backupDOIRetrieval (ascii_title, verbosity):
         return 0, ''
 
 def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status):
+    '''
+    Function to process retrieved DOI info:
+    If the primary or backup attempt was successful, the retrieved DOI and associated title are retrieved
+        and a Levenshtein ratio is obtained by comparing the the original title and doi-associated title.
+        If the Levenshtein ratio is greater than or equal to the preset or manually-set threshold, the Levenshtein ratio and doi are returned.
+        If the Levenshtein ratio is less than the preset or manually-set threshold, only the Levenshtein ratio is returned.
 
+    If both the primary and backup attempts were unsuccessful, a failure message is printed and the word "Failure" returned in place of a a Levenshtein ratio.
+    '''
+
+    #Process returned data if primary retrieval attempt was successful
     if status == 200:
 
         try:
@@ -471,6 +499,7 @@ def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status):
             data = json.loads(doiReq)
             items = data['message']['items']
 
+            ##Retrieve doi and title associated with doi
             for item in items:
                 if 'title' not in item:
                     continue
@@ -478,8 +507,10 @@ def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status):
                     preDOI = [z['DOI'] for z in data['message']['items'] ]
                     doiTitle = [z['title'] for z in data['message']['items'] ]
 
+            ##Obtain Levenshtein ratio
             levenshteinRatio = ratio(ascii_title.lower(), doiTitle[0][0].lower())
 
+            ##Determine if Levenshtein ratio meets threshold
             if levenshteinRatio >= levenshtein_threshold:
                 return levenshteinRatio, preDOI[0]
             else:
@@ -490,15 +521,20 @@ def processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status):
             print(f'\n - Failed to get DOI for the pub "{ascii_title}" due to issue with Cross Ref data: "{e}".')
             return 0, ''
 
+    #Process returned data if backup retrieval attempt was successful
     elif status == 'ok':
 
         try:
+
+            ##Retrieve doi and title associated with doi
             if verbosity == 1 or verbosity == 2: print('Retrieving doi for: ' + str(ascii_title) + ' at ' + str(time.asctime(time.localtime(time.time()))) )
             preDOI = [z['DOI'] for z in doiReq['message']['items'] ]
             doiTitle = [z['title'] for z in doiReq['message']['items'] ]
 
+            ##Obtain Levenshtein ratio
             levenshteinRatio = ratio(ascii_title.lower(), doiTitle[0][0].lower())
 
+            ##Determine if Levenshtein ratio meets threshold
             if levenshteinRatio >= levenshtein_threshold:
                 return levenshteinRatio, preDOI[0]
             else:
