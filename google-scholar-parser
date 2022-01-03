@@ -582,7 +582,7 @@ if __name__ == "__main__":
                                         help = 'Force program to overwrite existing output files.')
     miscellaneousNamed.add_argument('--file-type', choices = ['txt', 'tsv', 'csv', 'idk'], default = 'txt',
                                         help = 'The preferred file type is .txt, but if you really want to try another basic text format you can.')
-    miscellaneousNamed.add_argument('--levenshtein-threshold', default = 0.95,
+    miscellaneousNamed.add_argument('--levenshtein-threshold', default = 0.95, type=float,
                                         help = 'Similarity threshold between 0.0-1.0 for Title and DOI reverse lookup title')
 
     #Check if proper arguments are given
