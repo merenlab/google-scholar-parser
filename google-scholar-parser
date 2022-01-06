@@ -378,7 +378,7 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
 def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key):
     with open(output_file, 'wt') as o_file:
         tsv_writer = csv.writer(o_file, delimiter='\t')
-        tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'DOI Request Status Code', 'levenshtein Ratio', 'DOI'])
+        tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'Citations', 'DOI', 'DOI Request Status Code', 'levenshtein Ratio'])
         for v in dicList:
             title = v['bib']['title'] if 'title' in v['bib'] else ''
             auth = format_authors(v['bib']['author']) if 'author' in v['bib'] else ''
@@ -387,6 +387,7 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
             volu = v['bib']['volume'] if 'volume' in v['bib'] else ''
             numb = v['bib']['number'] if 'number' in v['bib'] else ''
             page = v['bib']['pages'] if 'pages' in v['bib'] else ''
+            cite = v['num_citations'] if 'num_citations' in v else ''
 
             # get an ASCII-only version of the title to avoid downstream API snafu:
             ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
@@ -396,10 +397,9 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
 
             levenshteinRatio, doi = processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status)
 
-            if verbosity == 2:
-                print(f'Title: "{title}"; Doi: {doi}')
+            if verbosity == 2: print(f'Title: "{title}"; Doi: {doi}')
 
-            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, status, levenshteinRatio, doi])
+            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, cite, doi, status, levenshteinRatio])
 
 #Reformat authors from scholarly format to desired format
 def format_authors(authors_in_scholarly_format):
