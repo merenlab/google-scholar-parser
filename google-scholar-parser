@@ -110,7 +110,7 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
             if pg is not None: scholarly.use_proxy(pg, pg)
             author = scholarly.fill(id, sections=['basics', 'publications'] )
             numPub = len(author['publications'])
-            if verbosity == 1 or verbosity == 2: print(name + ' has ' + str(numPub) + ' publications')
+            if verbosity == 1 or verbosity == 2: print(name + ' has ' + str(numPub) + ' publications\n')
 
             ###Generate random intervals to be used between scraping pub info if random interval preacution left on
             random_intervals = []
@@ -133,6 +133,8 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
 
         except Exception as exc:
             print(f'Could not get info for: {a_id}, exception: {exc}')
+
+    print()
 
     #Produce final .tsv file
     produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key)
@@ -350,9 +352,11 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
                 ##Fill publication info and append dictionary to list
                 if pg is not None: scholarly.use_proxy(pg, pg)
                 nPub = scholarly.fill(author['publications'][i])
-                if verbosity == 2: print(nPub)
+
                 dicList.append(nPub)
                 if verbosity == 1 or verbosity == 2: print("Gathered data for pub " + str(i+1) + " at ", time.asctime(time.localtime(time.time())))
+                if verbosity == 2: print(nPub, '\n')
+
 
             except DOSException:
                 print(f'A Could not get info for: {a_id}', '\nA DOSException has occurred')
@@ -397,7 +401,7 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
 
             levenshteinRatio, doi = processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status)
 
-            if verbosity == 2: print(f'Title: "{title}"; Doi: {doi}')
+            if verbosity == 2: print(f'Title: "{title}"; Doi: {doi}\n')
 
             tsv_writer.writerow([title, auth, year, jour, volu, numb, page, cite, doi, status, levenshteinRatio])
 
