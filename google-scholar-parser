@@ -137,7 +137,7 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
     print()
 
     #Produce final .tsv file
-    produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key)
+    produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key, random_interval_precaution)
     if verbosity == 1 or verbosity == 2: print(output_file + ' created at ' + str(time.asctime(time.localtime(time.time()))))
 
 #Create class for FilesNPathsError
@@ -371,7 +371,7 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
             ##Night night for program for randomly determined interval in random_intervals list
             if random_interval_precaution == 'Yes':
                 t = random_intervals[i]
-                if verbosity == 1 or verbosity == 2: print("Sleep for " + str(t) + " seconds")
+                if verbosity == 1 or verbosity == 2: print("Sleep for " + str(t) + " seconds at " + str(time.asctime(time.localtime(time.time()))))
                 time.sleep(t)
 
             i = i + 1
@@ -379,10 +379,12 @@ def gather_pub_info(author, random_intervals, dicList, random_interval_precautio
     return dicList
 
 #Write publication info to a .tsv file
-def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key):
+def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, api_key, random_interval_precaution):
     with open(output_file, 'wt') as o_file:
         tsv_writer = csv.writer(o_file, delimiter='\t')
-        tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'Citations', 'DOI', 'DOI Request Status Code', 'levenshtein Ratio'])
+        if verbosity < 2: tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'Citations', 'DOI'])
+        if verbosity ==2: tsv_writer.writerow(['Title', 'Authors', 'Year', 'Journal', 'Volume', 'Number', 'Pages', 'Citations', 'DOI', 'DOI Request Status Code', 'levenshtein Ratio'])
+
         for v in dicList:
             title = v['bib']['title'] if 'title' in v['bib'] else ''
             auth = format_authors(v['bib']['author']) if 'author' in v['bib'] else ''
@@ -397,13 +399,14 @@ def produce_final_tsv(output_file, dicList, verbosity, levenshtein_threshold, ap
             ascii_title = ''.join([i if ord(i) < 128 else '' for i in title])
 
             #Get make doi request
-            status, doiReq = getDOI(ascii_title, api_key, verbosity)
+            status, doiReq = getDOI(ascii_title, api_key, verbosity, random_interval_precaution)
 
             levenshteinRatio, doi = processDOI(ascii_title, doiReq, levenshtein_threshold, verbosity, status)
 
             if verbosity == 2: print(f'Title: "{title}"; Doi: {doi}\n')
 
-            tsv_writer.writerow([title, auth, year, jour, volu, numb, page, cite, doi, status, levenshteinRatio])
+            if verbosity < 2: tsv_writer.writerow([title, auth, year, jour, volu, numb, page, cite, doi])
+            if verbosity ==2: tsv_writer.writerow([title, auth, year, jour, volu, numb, page, cite, doi, status, levenshteinRatio])
 
 #Reformat authors from scholarly format to desired format
 def format_authors(authors_in_scholarly_format):
@@ -422,7 +425,7 @@ def format_authors(authors_in_scholarly_format):
 
     return new_author_string
 
-def getDOI(ascii_title, api_key, verbosity):
+def getDOI(ascii_title, api_key, verbosity, random_interval_precaution):
     '''
     Function that creates url Cross Ref API base and urllib-processed title
         and then attempts to retrieve doi info via Requests package and Cross Ref API
@@ -443,6 +446,11 @@ def getDOI(ascii_title, api_key, verbosity):
             r = requests.get('http://api.scraperapi.com', params=payload)
         else:
             r = requests.get(url)
+
+            if random_interval_precaution == 'Yes':
+                t = randint(30, 150)
+                if verbosity == 1 or verbosity == 2: print("\nSleep for " + str(t) + " seconds at " + str(time.asctime(time.localtime(time.time()))))
+                time.sleep(t)
 
         #Get request status code
         request_status_code = r.status_code
