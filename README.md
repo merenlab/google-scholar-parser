@@ -41,7 +41,7 @@ To confirm that `google-scholar-parser` was set up successfully, you can run the
 
 ``` bash
 python google-scholar-parser --user-ids dqKtzxQAAAAJ \
-                             --output-file meren-google-scholar.txt \
+                             --output-file shaiber-google-scholar.txt \
                              --article-limit-precaution 5
 ```
 
