@@ -1,6 +1,6 @@
 # A parser for Google Scholar
 
-The command line tool `google-scholar-parser` allows users to collect publication information for for one or more authors from [Google Scholar](https://scholar.google.com/). It is developed by Daniel Adam Nuccio, a graduate student at Northern Illinois University, as a side project to help those who may be interested in automated access to the public information stored in Google Scholar. Google Scholar does have the functionality to export TSV files, however, they're just quite useless as they truncate the author list for papers that contain many authors.
+The command line tool `google-scholar-parser` allows users to collect publication information for for one or more authors from [Google Scholar](https://scholar.google.com/). It is developed by Daniel Adam Nuccio, a graduate student at Northern Illinois University, as a side project to help those who may be interested in automated access to the public information stored in Google Scholar. Google Scholar does have the functionality to export TSV files, however, they may truncate the author list for papers that contain many authors.
 
 Essentially, for a given list of Google Scholar user IDs, `google-scholar-parser` returns a TAB-delimited text file that lists key information about their publications, including the list of authors, publication title, journal, etc.
 
@@ -79,7 +79,7 @@ If you do not care about DOIs, you can probably get away with 'Basic use' option
 
 ### Random Interval Precaution
 
-If you do not care about DOIs or time, you can utilize `--random-interval-precaution` to put `google-scholar-parser` to sleep for 30s-150s between each attempt to gather data for a publication. Please note though, even for a single id, this can increase the required time to run the program from minutes to hours if that ID is associated with even just five or six dozen publications.
+If you do not care about time, you can utilize `--random-interval-precaution` to put `google-scholar-parser` to sleep for 30s-150s between each attempt to gather data for a publication and then another 30s-150s when retrieving each DOI. Please note though, even for a single id, this can increase the required time to run the program from minutes to hours if that ID is associated with even just a few dozen publications.
 
 You can run `google-scholar-parser` with `--random-interval-precaution` as follows (although be warned, it is not clear how long it will take for the all-knowing Google to catch on):
 
@@ -91,7 +91,7 @@ python google-scholar-parser --user-ids USERID1 \
 
 ### Scraper API
 
-However, if DOIs are important to you, or you are engaging in very large collections of data and are concerned either about time or that you cannot outrun Google forever, you will need to utilize [Scraper API](https://www.scraperapi.com/).
+However, if you are engaging in very large collections of data and are concerned either about time or that you cannot outrun Google forever, you will need to utilize [Scraper API](https://www.scraperapi.com/).
 
 Initially, Scraper API will generously give you 5000 free API calls. Later, however, this is cut to 1000 per month. Therefore, please note, if you are doing data collection for publications on a large enough scale to need Scraper API or intend to do bulk collections long term, you will likely need a paid account.
 
@@ -127,13 +127,13 @@ python google-scholar-parser --user-ids USERID1 \
 
 ### Verbosity
 
-The `--verbosity` argument is intended to allow users (and the developers) to customize how much output concerning the progress of their data collection is printed to the terminal window on their computer.
+The `--verbosity` argument is intended to allow users (and the developers) to customize how much output concerning the progress of their data collection is printed to the terminal window on their computer and in the resulting output file.
 
 Options include **0**, **1**, and **2**.
 
 - **0** greatly minimizes the amount of output printed in the terminal window, while still allowing for major warning and error messages (as well as a couple less important ones).
 - **1** provides the user with regular updates concerning the progress of their data collection. Although not necessarily essential, these can be useful for users who want to easily track the progress of their data collection and can be beneficial for troubleshooting purposes in the event that `google-scholar-parser` gets stuck, fails, etc. (Ultimately a steady flow of time-stamped progress updates can provide more peace of mind than a program that seems to run indefinitely without telling you anything ).
-- **2** outputs considerably more information to the terminal window. This is mainly comprised of unparsed publication info that will ultimately end up in your output file, but in a cleaner format. This information may be beneficial for troubleshooting or testing purposes, especially if it appears google-scholar-parse is not returning all the data it should, but may ultimately may make output to the terminal window seem more cluttered and harder to follow in most other circumstances. (Yes, there can be too much of a good thing :wink: )
+- **2** outputs considerably more information to the terminal window. This is mainly comprised of unparsed publication info that will ultimately end up in your output file, but in a cleaner format. This information may be beneficial for troubleshooting or testing purposes, especially if it appears `google-scholar-parser` is not returning all the data it should, but may ultimately may make output to the terminal window seem more cluttered and harder to follow in most other circumstances. (Yes, there can be too much of a good thing :wink: ). This option also provides additional information (e.g. Levenshtein scores and DOI request status) to the output file which can be used for troubleshooting possible issues with DOI retrieval.
 
 The default is **1** but you can change it as seen below:
 
