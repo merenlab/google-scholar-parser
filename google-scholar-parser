@@ -447,6 +447,7 @@ def getDOI(ascii_title, api_key, verbosity, random_interval_precaution):
         else:
             r = requests.get(url)
 
+            ##Allow for use of ranom interval feature for DOIs if selected
             if random_interval_precaution == 'Yes':
                 t = randint(30, 150)
                 if verbosity == 1 or verbosity == 2: print("\nSleep for " + str(t) + " seconds at " + str(time.asctime(time.localtime(time.time()))))
