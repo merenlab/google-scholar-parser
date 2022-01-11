@@ -86,7 +86,7 @@ def main(author_ids, output_file, random_interval_precaution, article_limit_prec
     proxy_success = False
     if api_key is not None:
         while proxy_success == False:
-            proxy_success = pg.ScraperAPI(str(api_key)) #'9a7b0111cac9972e465e0040b5f37bdf' is the key from Daniel's free account
+            proxy_success = pg.ScraperAPI(str(api_key)) 
         if verbosity == 1 or verbosity == 2: print('\nProxy setup was successful at ' + str(time.asctime(time.localtime(time.time()))))
     else:
         pg = None
